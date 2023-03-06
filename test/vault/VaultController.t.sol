@@ -32,11 +32,9 @@ import { IMultiRewardStaking } from "../../src/interfaces/IMultiRewardStaking.so
 import { IOwned } from "../../src/interfaces/IOwned.sol";
 import { IPausable } from "../../src/interfaces/IPausable.sol";
 
-import { IERC4626, IERC20 } from "../../src/interfaces/vault/IERC4626.sol";
-import { IVault, VaultFees } from "../../src/interfaces/vault/IVault.sol";
+import { IVault, VaultFees, IERC4626, IERC20 } from "../../src/interfaces/vault/IVault.sol";
 
 import { MockERC20 } from "../utils/mocks/MockERC20.sol";
-import { MockERC4626 } from "../utils/mocks/MockERC4626.sol";
 import { MockAdapter } from "../utils/mocks/MockAdapter.sol";
 import { MockStrategy } from "../utils/mocks/MockStrategy.sol";
 
@@ -118,7 +116,7 @@ contract VaultControllerTest is Test {
   event RewardsClaimed(address indexed user, IERC20 rewardsToken, uint256 amount, bool escrowed);
 
   event VaultDeployed(address indexed vault, address indexed staking, address indexed adapter);
-  event ManagementFeeChanged(uint256 oldFee, uint256 newFee);
+  event PerformanceFeeChanged(uint256 oldFee, uint256 newFee);
   event HarvestCooldownChanged(uint256 oldCooldown, uint256 newCooldown);
   event LatestTemplateKeyChanged(bytes32 oldKey, bytes32 newKey);
 
@@ -237,11 +235,12 @@ contract VaultControllerTest is Test {
           adapter: IERC4626(address(0)),
           fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
           feeRecipient: feeRecipient,
+          depositLimit: type(uint256).max,
           owner: address(this)
         }),
         DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
         DeploymentArgs({ id: "MockStrategy", data: "" }),
-        address(0),
+        true,
         abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
         VaultMetadata({
           vault: address(0),
@@ -256,8 +255,11 @@ contract VaultControllerTest is Test {
       );
   }
 
-  function setPermission(address target, bool endorsed, bool rejected) public {
-    emit log_named_address("target", target);
+  function setPermission(
+    address target,
+    bool endorsed,
+    bool rejected
+  ) public {
     address[] memory targets = new address[](1);
     Permission[] memory permissions = new Permission[](1);
     targets[0] = target;
@@ -290,7 +292,7 @@ contract VaultControllerTest is Test {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
     addTemplate("Vault", "V1", vaultImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     rewardToken.mint(address(this), 10 ether);
     rewardToken.approve(address(controller), 10 ether);
@@ -307,11 +309,12 @@ contract VaultControllerTest is Test {
         adapter: IERC4626(address(0)),
         fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
         feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
         owner: address(this)
       }),
       DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
       DeploymentArgs({ id: "MockStrategy", data: "" }),
-      address(0),
+      true,
       abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
       VaultMetadata({
         vault: address(0),
@@ -334,6 +337,7 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vaultClone).fees().performance, 400);
     assertEq(IVault(vaultClone).feeRecipient(), feeRecipient);
     assertEq(IOwned(vaultClone).owner(), address(adminProxy));
+    assertEq(IVault(vaultClone).depositLimit(), type(uint256).max);
     // Assert Vault Metadata
     assertEq(vaultRegistry.getVault(vaultClone).vault, vaultClone);
     assertEq(vaultRegistry.getVault(vaultClone).staking, stakingClone);
@@ -346,7 +350,7 @@ contract VaultControllerTest is Test {
     assertTrue(cloneRegistry.cloneExists(adapterClone));
     assertEq(MockAdapter(adapterClone).initValue(), 100);
     assertEq(IAdapter(adapterClone).harvestCooldown(), 1 days);
-    assertEq(IAdapter(adapterClone).managementFee(), 1000);
+    assertEq(IAdapter(adapterClone).performanceFee(), 1000);
     assertEq(IAdapter(adapterClone).strategy(), strategyClone);
     // Assert Strategy
     assertTrue(cloneRegistry.cloneExists(strategyClone));
@@ -372,7 +376,7 @@ contract VaultControllerTest is Test {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
     addTemplate("Vault", "V1", vaultImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     rewardToken.mint(address(this), 10 ether);
     rewardToken.approve(address(controller), 10 ether);
@@ -388,11 +392,12 @@ contract VaultControllerTest is Test {
         adapter: IERC4626(address(0)),
         fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
         feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
         owner: address(this)
       }),
       DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
       DeploymentArgs({ id: "", data: "" }),
-      address(0),
+      true,
       abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
       VaultMetadata({
         vault: address(0),
@@ -413,7 +418,7 @@ contract VaultControllerTest is Test {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
     addTemplate("Vault", "V1", vaultImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     rewardToken.mint(address(this), 10 ether);
     rewardToken.approve(address(controller), 10 ether);
@@ -429,11 +434,12 @@ contract VaultControllerTest is Test {
         adapter: IERC4626(address(0)),
         fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
         feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
         owner: address(this)
       }),
       DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
       DeploymentArgs({ id: "", data: "" }),
-      address(0),
+      true,
       "",
       VaultMetadata({
         vault: address(0),
@@ -462,7 +468,7 @@ contract VaultControllerTest is Test {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
     addTemplate("Vault", "V1", vaultImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     rewardToken.mint(address(this), 10 ether);
     rewardToken.approve(address(controller), 10 ether);
@@ -484,11 +490,12 @@ contract VaultControllerTest is Test {
         adapter: IERC4626(address(adapterClone)),
         fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
         feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
         owner: address(this)
       }),
       DeploymentArgs({ id: "", data: "" }),
       DeploymentArgs({ id: "", data: "" }),
-      address(0),
+      true,
       abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
       VaultMetadata({
         vault: address(0),
@@ -507,73 +514,15 @@ contract VaultControllerTest is Test {
     assertTrue(cloneRegistry.cloneExists(adapterClone));
     assertEq(MockAdapter(adapterClone).initValue(), 300);
     assertEq(IAdapter(adapterClone).harvestCooldown(), 1 days);
-    assertEq(IAdapter(adapterClone).managementFee(), 1000);
+    assertEq(IAdapter(adapterClone).performanceFee(), 1000);
     assertEq(IAdapter(adapterClone).strategy(), address(0));
-  }
-
-  function test__deployVault_staking_given() public {
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-    controller.setManagementFee(uint256(1000));
-    controller.setHarvestCooldown(1 days);
-    rewardToken.mint(address(this), 10 ether);
-    rewardToken.approve(address(controller), 10 ether);
-
-    swapTokenAddresses[0] = address(0x9999);
-    address adapterClone = 0x949DEa045FE979a11F0D4A929446F83072D81095;
-    address strategyClone = 0xD6C5fA22BBE89db86245e111044a880213b35705;
-    address stakingClone = controller.deployStaking(iAsset);
-
-    uint256 callTimestamp = block.timestamp;
-    address vaultClone = controller.deployVault(
-      VaultInitParams({
-        asset: iAsset,
-        adapter: IERC4626(address(0)),
-        fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
-        feeRecipient: feeRecipient,
-        owner: address(this)
-      }),
-      DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
-      DeploymentArgs({ id: "MockStrategy", data: "" }),
-      stakingClone,
-      abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
-      VaultMetadata({
-        vault: address(0),
-        staking: address(0),
-        creator: address(this),
-        metadataCID: metadataCid,
-        swapTokenAddresses: swapTokenAddresses,
-        swapAddress: address(0x5555),
-        exchange: uint256(1)
-      }),
-      0
-    );
-    // Assert Vault Metadata
-    assertEq(vaultRegistry.getVault(vaultClone).staking, stakingClone);
-    // Assert Staking
-    assertTrue(cloneRegistry.cloneExists(stakingClone));
-    assertEq(IERC4626(stakingClone).asset(), address(iAsset));
-
-    assertEq(IMultiRewardStaking(stakingClone).rewardInfos(iRewardToken).ONE, 1 ether);
-    assertEq(IMultiRewardStaking(stakingClone).rewardInfos(iRewardToken).rewardsPerSecond, 0.1 ether);
-    assertEq(
-      uint256(IMultiRewardStaking(stakingClone).rewardInfos(iRewardToken).rewardsEndTimestamp),
-      callTimestamp + 10
-    );
-    assertEq(uint256(IMultiRewardStaking(stakingClone).rewardInfos(iRewardToken).index), 1 ether);
-    assertEq(uint256(IMultiRewardStaking(stakingClone).rewardInfos(iRewardToken).lastUpdatedTimestamp), callTimestamp);
-
-    assertEq(uint256(IMultiRewardStaking(stakingClone).escrowInfos(iRewardToken).escrowPercentage), 10000000);
-    assertEq(uint256(IMultiRewardStaking(stakingClone).escrowInfos(iRewardToken).escrowDuration), 2 days);
-    assertEq(uint256(IMultiRewardStaking(stakingClone).escrowInfos(iRewardToken).offset), 1 days);
   }
 
   function test__deployVault_with_initial_deposit() public {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
     addTemplate("Vault", "V1", vaultImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     rewardToken.mint(address(this), 10 ether);
     rewardToken.approve(address(controller), 10 ether);
@@ -593,11 +542,12 @@ contract VaultControllerTest is Test {
         adapter: IERC4626(address(0)),
         fees: VaultFees({ deposit: 0, withdrawal: 200, management: 300, performance: 400 }),
         feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
         owner: address(this)
       }),
       DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
       DeploymentArgs({ id: "MockStrategy", data: "" }),
-      address(0),
+      true,
       abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
       VaultMetadata({
         vault: address(0),
@@ -611,13 +561,12 @@ contract VaultControllerTest is Test {
       1 ether
     );
     // Check the initial deposit
-    assertEq(asset.balanceOf(adapterClone), 1 ether);
-    assertEq(IERC20(adapterClone).balanceOf(vaultClone), 1 ether);
+    assertEq(IERC20(adapterClone).balanceOf(vaultClone), 1 ether * 1e9);
     assertEq(IERC4626(adapterClone).totalAssets(), 1 ether);
-    assertEq(IERC4626(adapterClone).totalSupply(), 1 ether);
-    assertEq(IERC20(vaultClone).balanceOf(address(this)), 1 ether);
+    assertEq(IERC4626(adapterClone).totalSupply(), 1 ether * 1e9);
+    assertEq(IERC20(vaultClone).balanceOf(address(this)), 1 ether * 1e9);
     assertEq(IERC4626(vaultClone).totalAssets(), 1 ether);
-    assertEq(IERC4626(vaultClone).totalSupply(), 1 ether);
+    assertEq(IERC4626(vaultClone).totalSupply(), 1 ether * 1e9);
   }
 
   function testFail__deployVault_creator_rejected() public {
@@ -631,6 +580,41 @@ contract VaultControllerTest is Test {
     deployVault();
   }
 
+  function testFail__deployVault_without_staking_but_with_rewards() public {
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    controller.setPerformanceFee(uint256(1000));
+    controller.setHarvestCooldown(1 days);
+    rewardToken.mint(address(this), 10 ether);
+    rewardToken.approve(address(controller), 10 ether);
+
+    controller.deployVault(
+      VaultInitParams({
+        asset: iAsset,
+        adapter: IERC4626(address(0)),
+        fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
+        feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
+        owner: address(this)
+      }),
+      DeploymentArgs({ id: templateId, data: abi.encode(uint256(100)) }),
+      DeploymentArgs({ id: "MockStrategy", data: "" }),
+      false,
+      abi.encode(address(rewardToken), 0.1 ether, 1 ether, true, 10000000, 2 days, 1 days),
+      VaultMetadata({
+        vault: address(0),
+        staking: address(0),
+        creator: address(this),
+        metadataCID: metadataCid,
+        swapTokenAddresses: swapTokenAddresses,
+        swapAddress: address(0x5555),
+        exchange: uint256(1)
+      }),
+      0
+    );
+  }
+
   /*//////////////////////////////////////////////////////////////
                         ADAPTER DEPLOYMENT
     //////////////////////////////////////////////////////////////*/
@@ -638,7 +622,7 @@ contract VaultControllerTest is Test {
   function test__deployAdapter() public {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     address adapterClone = 0xD6C5fA22BBE89db86245e111044a880213b35705;
     address strategyClone = 0xe8a41C57AB0019c403D35e8D54f2921BaE21Ed66;
@@ -652,7 +636,7 @@ contract VaultControllerTest is Test {
 
     assertEq(MockAdapter(adapterClone).initValue(), 100);
     assertEq(IAdapter(adapterClone).harvestCooldown(), 1 days);
-    assertEq(IAdapter(adapterClone).managementFee(), 1000);
+    assertEq(IAdapter(adapterClone).performanceFee(), 1000);
     assertEq(IAdapter(adapterClone).strategy(), strategyClone);
     assertTrue(cloneRegistry.cloneExists(adapterClone));
     assertTrue(cloneRegistry.cloneExists(strategyClone));
@@ -660,7 +644,7 @@ contract VaultControllerTest is Test {
 
   function test__deployAdapter_without_strategy() public {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     address adapterClone = 0xe8a41C57AB0019c403D35e8D54f2921BaE21Ed66;
 
@@ -673,14 +657,14 @@ contract VaultControllerTest is Test {
 
     assertEq(MockAdapter(adapterClone).initValue(), 100);
     assertEq(IAdapter(adapterClone).harvestCooldown(), 1 days);
-    assertEq(IAdapter(adapterClone).managementFee(), 1000);
+    assertEq(IAdapter(adapterClone).performanceFee(), 1000);
     assertEq(IAdapter(adapterClone).strategy(), address(0));
     assertTrue(cloneRegistry.cloneExists(adapterClone));
   }
 
   function test__deployAdapter_with_initial_deposit() public {
     addTemplate("Adapter", templateId, adapterImpl, true, true);
-    controller.setManagementFee(uint256(1000));
+    controller.setPerformanceFee(uint256(1000));
     controller.setHarvestCooldown(1 days);
     asset.mint(address(this), 1 ether);
     asset.approve(address(controller), 1 ether);
@@ -695,10 +679,9 @@ contract VaultControllerTest is Test {
     );
 
     // Check the initial deposit
-    assertEq(asset.balanceOf(adapterClone), 1 ether);
-    assertEq(IERC20(adapterClone).balanceOf(address(this)), 1 ether);
+    assertEq(IERC20(adapterClone).balanceOf(address(this)), 1 ether * 1e9);
     assertEq(IERC4626(adapterClone).totalAssets(), 1 ether);
-    assertEq(IERC4626(adapterClone).totalSupply(), 1 ether);
+    assertEq(IERC4626(adapterClone).totalSupply(), 1 ether * 1e9);
   }
 
   function testFail__deployAdapter_token_rejected() public {
@@ -892,20 +875,6 @@ contract VaultControllerTest is Test {
     controller.proposeVaultAdapters(targets, adapters);
   }
 
-  function testFail__proposeVaultAdapters_nonOwner() public {
-    address[] memory targets = new address[](1);
-    IERC4626[] memory adapters = new IERC4626[](1);
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-
-    address vault = deployVault();
-    targets[0] = vault;
-
-    vm.prank(nonOwner);
-    controller.proposeVaultAdapters(targets, adapters);
-  }
-
   /*//////////////////////////////////////////////////////////////
                       CHANGE VAULT ADAPTER
     //////////////////////////////////////////////////////////////*/
@@ -980,19 +949,6 @@ contract VaultControllerTest is Test {
     controller.proposeVaultFees(targets, fees);
   }
 
-  function testFail__proposeVaultFees_nonOwner() public {
-    address[] memory targets = new address[](1);
-    VaultFees[] memory fees = new VaultFees[](1);
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-    address vault = deployVault();
-    targets[0] = vault;
-
-    vm.prank(nonOwner);
-    controller.proposeVaultFees(targets, fees);
-  }
-
   /*//////////////////////////////////////////////////////////////
                       CHANGE VAULT FEES
     //////////////////////////////////////////////////////////////*/
@@ -1016,6 +972,130 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vault).fees().withdrawal, 20);
     assertEq(IVault(vault).fees().management, 30);
     assertEq(IVault(vault).fees().performance, 40);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                      SET VAULT QUIT PERIOD
+    //////////////////////////////////////////////////////////////*/
+
+  function test__setVaultQuitPeriods() public {
+    address[] memory targets = new address[](1);
+    uint256[] memory quitPeriods = new uint256[](1);
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    address vault = deployVault();
+    targets[0] = vault;
+    quitPeriods[0] = 1 days;
+
+    // Pass the inital quit period
+    vm.warp(block.timestamp + 3 days);
+    controller.setVaultQuitPeriods(targets, quitPeriods);
+
+    assertEq(IVault(vault).quitPeriod(), 1 days);
+  }
+
+  function testFail__setVaultQuitPeriods_missmatching_arrays() public {
+    address[] memory targets = new address[](2);
+    uint256[] memory quitPeriods = new uint256[](1);
+
+    controller.setVaultQuitPeriods(targets, quitPeriods);
+  }
+
+  function testFail__setVaultQuitPeriods_nonCreator() public {
+    address[] memory targets = new address[](1);
+    uint256[] memory quitPeriods = new uint256[](1);
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    address vault = deployVault();
+    targets[0] = vault;
+    quitPeriods[0] = 1 days;
+
+    vm.prank(bob);
+    controller.setVaultQuitPeriods(targets, quitPeriods);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                      SET VAULT QUIT PERIOD
+    //////////////////////////////////////////////////////////////*/
+
+  function test__setVaultFeeRecipients() public {
+    address[] memory targets = new address[](1);
+    address[] memory feeRecipients = new address[](1);
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    address vault = deployVault();
+    targets[0] = vault;
+    feeRecipients[0] = address(0x44444);
+
+    // Pass the inital quit period
+    vm.warp(block.timestamp + 3 days);
+    controller.setVaultFeeRecipients(targets, feeRecipients);
+
+    assertEq(IVault(vault).feeRecipient(), address(0x44444));
+  }
+
+  function testFail__setVaultFeeRecipients_missmatching_arrays() public {
+    address[] memory targets = new address[](2);
+    address[] memory feeRecipients = new address[](1);
+
+    controller.setVaultFeeRecipients(targets, feeRecipients);
+  }
+
+  function testFail__setVaultFeeRecipients_nonCreator() public {
+    address[] memory targets = new address[](1);
+    address[] memory feeRecipients = new address[](1);
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    address vault = deployVault();
+    targets[0] = vault;
+    feeRecipients[0] = address(0x44444);
+
+    vm.prank(bob);
+    controller.setVaultFeeRecipients(targets, feeRecipients);
+  }
+
+  /*//////////////////////////////////////////////////////////////
+                      SET VAULT DEPOSIT LIMIT
+    //////////////////////////////////////////////////////////////*/
+
+  function test__setVaultDepositLimits() public {
+    address[] memory targets = new address[](1);
+    uint256[] memory depositLimits = new uint256[](1);
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    address vault = deployVault();
+    targets[0] = vault;
+    depositLimits[0] = uint256(10);
+
+    controller.setVaultDepositLimits(targets, depositLimits);
+
+    assertEq(IVault(vault).depositLimit(), uint256(10));
+  }
+
+  function testFail__setVaultDepositLimits_missmatching_arrays() public {
+    address[] memory targets = new address[](2);
+    uint256[] memory depositLimits = new uint256[](1);
+
+    controller.setVaultDepositLimits(targets, depositLimits);
+  }
+
+  function testFail__setVaultDepositLimits_nonCreator() public {
+    address[] memory targets = new address[](1);
+    uint256[] memory depositLimits = new uint256[](1);
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    address vault = deployVault();
+    targets[0] = vault;
+    depositLimits[0] = uint256(10);
+
+    vm.prank(bob);
+    controller.setVaultDepositLimits(targets, depositLimits);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -1309,10 +1389,6 @@ contract VaultControllerTest is Test {
                     TOGGLE TEMPLATE ENDORSEMENT
     //////////////////////////////////////////////////////////////*/
 
-  /*//////////////////////////////////////////////////////////////
-                    TOGGLE TEMPLATE ENDORSEMENT
-    //////////////////////////////////////////////////////////////*/
-
   function test__toggleTemplateEndorsements() public {
     bytes32[] memory templateCategories = new bytes32[](1);
     templateCategories[0] = templateCategory;
@@ -1380,18 +1456,6 @@ contract VaultControllerTest is Test {
     assertTrue(IPausable(IVault(vault).adapter()).paused());
   }
 
-  function testFail__pauseAdapters_nonCreator() public {
-    address[] memory targets = new address[](1);
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-    address vault = deployVault();
-    targets[0] = vault;
-
-    vm.prank(bob);
-    controller.pauseAdapters(targets);
-  }
-
   function testFail__pauseAdapters_nonOwner() public {
     address[] memory targets = new address[](1);
     addTemplate("Adapter", templateId, adapterImpl, true, true);
@@ -1415,19 +1479,6 @@ contract VaultControllerTest is Test {
 
     controller.unpauseAdapters(targets);
     assertFalse(IPausable(IVault(vault).adapter()).paused());
-  }
-
-  function testFail__unpauseAdapters_nonCreator() public {
-    address[] memory targets = new address[](1);
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-    address vault = deployVault();
-    targets[0] = vault;
-    controller.pauseAdapters(targets);
-
-    vm.prank(bob);
-    controller.unpauseAdapters(targets);
   }
 
   function testFail__unpauseAdapters_nonOwner() public {
@@ -1471,18 +1522,6 @@ contract VaultControllerTest is Test {
     controller.pauseVaults(targets);
   }
 
-  function testFail__pauseVaults_nonOwner() public {
-    address[] memory targets = new address[](1);
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-    address vault = deployVault();
-    targets[0] = vault;
-
-    vm.prank(nonOwner);
-    controller.pauseVaults(targets);
-  }
-
   function test__unpauseVaults() public {
     address[] memory targets = new address[](1);
     addTemplate("Adapter", templateId, adapterImpl, true, true);
@@ -1506,19 +1545,6 @@ contract VaultControllerTest is Test {
     controller.pauseVaults(targets);
 
     vm.prank(bob);
-    controller.unpauseVaults(targets);
-  }
-
-  function testFail__unpauseVaults_nonOwner() public {
-    address[] memory targets = new address[](1);
-    addTemplate("Adapter", templateId, adapterImpl, true, true);
-    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
-    addTemplate("Vault", "V1", vaultImpl, true, true);
-    address vault = deployVault();
-    targets[0] = vault;
-    controller.pauseVaults(targets);
-
-    vm.prank(nonOwner);
     controller.unpauseVaults(targets);
   }
 
@@ -1562,36 +1588,36 @@ contract VaultControllerTest is Test {
                         SET MANAGEMENT FEE
     //////////////////////////////////////////////////////////////*/
 
-  function test__setManagementFee() public {
-    controller.setManagementFee(1e16);
-    assertEq(controller.managementFee(), 1e16);
+  function test__setPerformanceFee() public {
+    controller.setPerformanceFee(1e16);
+    assertEq(controller.performanceFee(), 1e16);
   }
 
-  function testFail__setManagementFee_fee_out_of_bonds() public {
-    controller.setManagementFee(3e17);
+  function testFail__setPerformanceFee_fee_out_of_bonds() public {
+    controller.setPerformanceFee(3e17);
   }
 
-  function testFail__setManagementFee_nonOwner() public {
+  function testFail__setPerformanceFee_nonOwner() public {
     vm.prank(nonOwner);
-    controller.setManagementFee(1e16);
+    controller.setPerformanceFee(1e16);
   }
 
-  function test__setAdapterManagementFees() public {
+  function test__setAdapterPerformanceFees() public {
     address[] memory targets = new address[](1);
     addTemplate("Adapter", templateId, adapterImpl, true, true);
     address adapter = deployAdapter();
     targets[0] = adapter;
-    controller.setManagementFee(1e16);
+    controller.setPerformanceFee(1e16);
 
-    controller.setAdapterManagementFees(targets);
-    assertEq(IAdapter(adapter).managementFee(), 1e16);
+    controller.setAdapterPerformanceFees(targets);
+    assertEq(IAdapter(adapter).performanceFee(), 1e16);
   }
 
-  function testFail__setAdapterManagementFees_nonOwner() public {
+  function testFail__setAdapterPerformanceFees_nonOwner() public {
     address[] memory targets = new address[](1);
 
     vm.prank(nonOwner);
-    controller.setAdapterManagementFees(targets);
+    controller.setAdapterPerformanceFees(targets);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -1636,14 +1662,17 @@ contract VaultControllerTest is Test {
 
   function test__setDeploymentController() public {
     IDeploymentController newDeploymentController = IDeploymentController(
-      address(
-        new DeploymentController(address(this), factory, ICloneRegistry(address(1)), ITemplateRegistry(address(2)))
-      )
+      address(new DeploymentController(address(adminProxy), factory, cloneRegistry, templateRegistry))
     );
+
     controller.setDeploymentController(newDeploymentController);
+
     assertEq(address(controller.deploymentController()), address(newDeploymentController));
-    assertEq(address(controller.cloneRegistry()), address(1));
-    assertEq(address(controller.templateRegistry()), address(2));
+    assertEq(address(controller.cloneRegistry()), address(cloneRegistry));
+    assertEq(address(controller.templateRegistry()), address(templateRegistry));
+    assertEq(factory.owner(), address(newDeploymentController));
+    assertEq(cloneRegistry.owner(), address(newDeploymentController));
+    assertEq(templateRegistry.owner(), address(newDeploymentController));
   }
 
   function testFail__setDeploymentController_addressZero() public {

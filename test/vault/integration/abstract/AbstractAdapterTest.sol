@@ -11,8 +11,12 @@ import { IStrategy } from "../../../../src/interfaces/vault/IStrategy.sol";
 import { IERC20Upgradeable as IERC20, IERC20MetadataUpgradeable as IERC20Metadata } from "openzeppelin-contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import { ITestConfigStorage } from "./ITestConfigStorage.sol";
 import { MockStrategy } from "../../../utils/mocks/MockStrategy.sol";
+import { Math } from "openzeppelin-contracts/utils/math/Math.sol";
+import { Clones } from "openzeppelin-contracts/proxy/Clones.sol";
 
 contract AbstractAdapterTest is PropertyTest {
+  using Math for uint256;
+
   ITestConfigStorage testConfigStorage;
 
   string baseTestId; // Depends on external Protocol (e.g. Beefy,Yearn...)
@@ -28,10 +32,12 @@ contract AbstractAdapterTest is PropertyTest {
   uint256 defaultAmount;
   uint256 raise;
 
+  uint256 minFuzz = 1e10;
   uint256 maxAssets;
   uint256 maxShares;
 
   IERC20 asset;
+  address implementation;
   IAdapter adapter;
   IStrategy strategy;
   address externalRegistry;
@@ -42,24 +48,26 @@ contract AbstractAdapterTest is PropertyTest {
 
   function setUpBaseTest(
     IERC20 asset_,
-    IAdapter adapter_,
+    address implementation_,
     address externalRegistry_,
     uint256 delta_,
     string memory baseTestId_,
     bool useStrategy_
   ) public {
-    // Setup PropertyTest
-    _asset_ = address(asset_);
-    _vault_ = address(adapter_);
-    _delta_ = delta_;
-
     asset = asset_;
-    adapter = adapter_;
+
+    implementation = implementation_;
+    adapter = IAdapter(Clones.clone(implementation_));
     externalRegistry = externalRegistry_;
 
-    defaultAmount = 10 ** IERC20Metadata(address(asset_)).decimals();
+    // Setup PropertyTest
+    _vault_ = address(adapter);
+    _asset_ = address(asset_);
+    _delta_ = delta_;
 
-    raise = defaultAmount * 100_000;
+    defaultAmount = 10**IERC20Metadata(address(asset_)).decimals() * 1e9;
+
+    raise = defaultAmount;
     maxAssets = defaultAmount * 1000;
     maxShares = maxAssets / 2;
 
@@ -81,8 +89,10 @@ contract AbstractAdapterTest is PropertyTest {
     // protocol specific setup();
   }
 
-  // Construct a new Adapter and set it to `adapter`
-  function createAdapter() public virtual {}
+  // Clone a new Adapter and set it to `adapter`
+  function createAdapter() public {
+    adapter = IAdapter(Clones.clone(implementation));
+  }
 
   // Increase the pricePerShare of the external protocol
   // sometimes its enough to simply add assets, othertimes one also needs to call some functions before the external protocol reflects the change
@@ -139,8 +149,11 @@ contract AbstractAdapterTest is PropertyTest {
     assertEq(adapter.strategy(), address(strategy), "strategy");
     assertEq(adapter.harvestCooldown(), 0, "harvestCooldown");
     assertEq(adapter.strategyConfig(), "", "strategyConfig");
-    assertEq(adapter.feesUpdatedAt(), callTime, "feesUpdatedAt");
-    assertEq(IERC20Metadata(address(adapter)).decimals(), IERC20Metadata(address(asset)).decimals(), "decimals");
+    assertEq(
+      IERC20Metadata(address(adapter)).decimals(),
+      IERC20Metadata(address(asset)).decimals() + adapter.decimalOffset(),
+      "decimals"
+    );
 
     verify_adapterInit();
   }
@@ -215,7 +228,7 @@ contract AbstractAdapterTest is PropertyTest {
                           PREVIEW VIEWS
     //////////////////////////////////////////////////////////////*/
   function test__previewDeposit(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxAssets);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxAssets);
 
     deal(address(asset), bob, maxAssets);
     vm.prank(bob);
@@ -225,7 +238,7 @@ contract AbstractAdapterTest is PropertyTest {
   }
 
   function test__previewMint(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxShares);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxShares);
 
     deal(address(asset), bob, maxAssets);
     vm.prank(bob);
@@ -235,7 +248,7 @@ contract AbstractAdapterTest is PropertyTest {
   }
 
   function test__previewWithdraw(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxAssets);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxAssets);
 
     uint256 reqAssets = (adapter.previewMint(adapter.previewWithdraw(amount)) * 10) / 9;
     _mintFor(reqAssets, bob);
@@ -246,7 +259,7 @@ contract AbstractAdapterTest is PropertyTest {
   }
 
   function test__previewRedeem(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxShares);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxShares);
 
     uint256 reqAssets = (adapter.previewMint(amount) * 10) / 9;
     _mintFor(reqAssets, bob);
@@ -261,7 +274,7 @@ contract AbstractAdapterTest is PropertyTest {
     //////////////////////////////////////////////////////////////*/
 
   function test__deposit(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxAssets);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxAssets);
     uint8 len = uint8(testConfigStorage.getTestConfigLength());
     for (uint8 i; i < len; i++) {
       if (i > 0) overrideSetup(testConfigStorage.getTestConfig(i));
@@ -277,7 +290,7 @@ contract AbstractAdapterTest is PropertyTest {
   }
 
   function test__mint(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxShares);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxShares);
     uint8 len = uint8(testConfigStorage.getTestConfigLength());
     for (uint8 i; i < len; i++) {
       if (i > 0) overrideSetup(testConfigStorage.getTestConfig(i));
@@ -293,12 +306,12 @@ contract AbstractAdapterTest is PropertyTest {
   }
 
   function test__withdraw(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxAssets);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxAssets);
     uint8 len = uint8(testConfigStorage.getTestConfigLength());
     for (uint8 i; i < len; i++) {
       if (i > 0) overrideSetup(testConfigStorage.getTestConfig(i));
 
-      uint256 reqAssets = (adapter.previewMint(adapter.previewWithdraw(amount)) * 10) / 9;
+      uint256 reqAssets = (adapter.previewMint(adapter.previewWithdraw(amount)) * 10) / 8;
       _mintFor(reqAssets, bob);
       vm.prank(bob);
       adapter.deposit(reqAssets, bob);
@@ -317,7 +330,7 @@ contract AbstractAdapterTest is PropertyTest {
   }
 
   function test__redeem(uint8 fuzzAmount) public virtual {
-    uint256 amount = bound(uint256(fuzzAmount), 10, maxShares);
+    uint256 amount = bound(uint256(fuzzAmount), minFuzz, maxShares);
     uint8 len = uint8(testConfigStorage.getTestConfigLength());
     for (uint8 i; i < len; i++) {
       if (i > 0) overrideSetup(testConfigStorage.getTestConfig(i));
@@ -352,7 +365,7 @@ contract AbstractAdapterTest is PropertyTest {
     uint256 assets = adapter.redeem(shares, bob, bob);
     vm.stopPrank();
 
-    assertApproxLeAbs(assets, defaultAmount, _delta_, testId);
+    assertLe(assets, defaultAmount, testId);
   }
 
   function test__RT_deposit_withdraw() public virtual {
@@ -363,7 +376,7 @@ contract AbstractAdapterTest is PropertyTest {
     uint256 shares2 = adapter.withdraw(defaultAmount, bob, bob);
     vm.stopPrank();
 
-    assertApproxGeAbs(shares2, shares1, _delta_, testId);
+    assertGe(shares2, shares1, testId);
   }
 
   function test__RT_mint_withdraw() public virtual {
@@ -374,7 +387,7 @@ contract AbstractAdapterTest is PropertyTest {
     uint256 shares = adapter.withdraw(assets, bob, bob);
     vm.stopPrank();
 
-    assertApproxGeAbs(shares, defaultAmount, _delta_, testId);
+    assertGe(shares, defaultAmount, testId);
   }
 
   function test__RT_mint_redeem() public virtual {
@@ -385,7 +398,7 @@ contract AbstractAdapterTest is PropertyTest {
     uint256 assets2 = adapter.redeem(defaultAmount, bob, bob);
     vm.stopPrank();
 
-    assertApproxGeAbs(assets2, assets1, _delta_, testId);
+    assertLe(assets2, assets1, testId);
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -469,30 +482,29 @@ contract AbstractAdapterTest is PropertyTest {
   event Harvested();
 
   function test__harvest() public virtual {
+    uint256 performanceFee = 1e16;
+    uint256 hwm = 1e9;
     _mintFor(defaultAmount, bob);
 
     vm.prank(bob);
     adapter.deposit(defaultAmount, bob);
 
-    // Skip a year
-    vm.warp(block.timestamp + 365.25 days);
+    uint256 oldTotalAssets = adapter.totalAssets();
+    adapter.setPerformanceFee(performanceFee);
+    increasePricePerShare(raise);
 
-    uint256 expectedFee = adapter.convertToShares((defaultAmount * 5e16) / 1e18);
-    uint256 callTime = block.timestamp;
+    uint256 gain = ((adapter.convertToAssets(1e18) - adapter.highWaterMark()) * adapter.totalSupply()) / 1e18;
+    uint256 fee = (gain * performanceFee) / 1e18;
+    uint256 expectedFee = adapter.convertToShares(fee);
 
-    if (address(strategy) != address(0)) {
-      vm.expectEmit(false, false, false, true, address(adapter));
-      emit StrategyExecuted();
-    }
     vm.expectEmit(false, false, false, true, address(adapter));
     emit Harvested();
 
-    uint256 totalAssets = adapter.totalAssets();
     adapter.harvest();
 
-    assertEq(adapter.feesUpdatedAt(), callTime, "feesUpdatedAt");
-    assertApproxEqAbs(adapter.assetsCheckpoint(), totalAssets, _delta_, "assetsCheckpoint");
-    assertApproxEqAbs(adapter.totalSupply(), defaultAmount + expectedFee, _delta_, "totalSupply");
+    // Multiply with the decimal offset
+    assertApproxEqAbs(adapter.totalSupply(), defaultAmount * 1e9 + expectedFee, _delta_, "totalSupply");
+    assertApproxEqAbs(adapter.balanceOf(feeRecipient), expectedFee, _delta_, "expectedFee");
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -522,23 +534,23 @@ contract AbstractAdapterTest is PropertyTest {
                             MANAGEMENT FEE
     //////////////////////////////////////////////////////////////*/
 
-  event ManagementFeeChanged(uint256 oldFee, uint256 newFee);
+  event PerformanceFeeChanged(uint256 oldFee, uint256 newFee);
 
-  function test__setManagementFee() public virtual {
+  function test__setPerformanceFee() public virtual {
     vm.expectEmit(false, false, false, true, address(adapter));
-    emit ManagementFeeChanged(5e16, 1e16);
-    adapter.setManagementFee(1e16);
+    emit PerformanceFeeChanged(0, 1e16);
+    adapter.setPerformanceFee(1e16);
 
-    assertEq(adapter.managementFee(), 1e16);
+    assertEq(adapter.performanceFee(), 1e16);
   }
 
-  function testFail__setManagementFee_nonOwner() public virtual {
+  function testFail__setPerformanceFee_nonOwner() public virtual {
     vm.prank(alice);
-    adapter.setManagementFee(1e16);
+    adapter.setPerformanceFee(1e16);
   }
 
-  function testFail__setManagementFee_invalid_fee() public virtual {
-    adapter.setManagementFee(3e17);
+  function testFail__setPerformanceFee_invalid_fee() public virtual {
+    adapter.setPerformanceFee(3e17);
   }
 
   /*//////////////////////////////////////////////////////////////

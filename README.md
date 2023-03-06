@@ -1,12 +1,12 @@
-# PopcornDAO Vault Audit
+# Overview
 
-This protocols goal is to make vault creation easy, safe and all without compromising on flexibility. It allows anyone to spin up their own Yearn in minutes. <br/>
+This protocols goal is to make vault creation easy, safe and all without compromising on flexibility. It allows anyone to spin up their own Yearn in minutes.
+
 **Vaults** can be created permissionlessly based on any underlying protocol and execute arbitrary strategies. 
-The factory uses only endorsed **Adapters** and **Strategies** with minimal user input to reduce complexity for a creator and ensure safety of the created clones. It gives vault creators a quick and easy way to spin up any **Vault** they need and end users the guarantee that the created **Vault** will be safe.
+The factory uses only endorsed **Adapters** and **Strategies** with minimal user input to reduce complexity for a creator and ensure safety of the created clones. It gives vault creators a quick and easy way to spin up any **Vault** they need and end users the guarantee that the created **Vault** will be safe. For some more context checkout the [whitepaper](./WhitePaper.pdf)
 
 The protocol consists of 2 parts. The Vault Factory and the actual Vaults and Adapters.
-<br/>
-<br/>
+
 ## Vault Factory
 The Vault Factory part consists of a mix of Registry and Execution contracts. All contracts are immutable but execution contracts can be swapped out if requirements change or additional functionality should be added.
 
@@ -20,13 +20,7 @@ The Vault Factory part consists of a mix of Registry and Execution contracts. Al
 -   **AdminProxy:** This contract owns any clone and most infrastructure contracts. Its used to make ownership transfers easy in case the **VaultController** should get updated. This contracts forwards almost all calls from the **VaultController**.
 
 **Note:** This system ensures that minimal user input is needed and executions are handled with valid inputs and in the correct order. The goal is to minimize human error and the attack surface. A lot of configurations for **Adapters** and **Strategies** is very protocol specific. These are therefore mainly handled in the implementations itself. **Adapters** should receive all there critical data from an on-chain registry of the underlying protocol. As its nearly impossible to tell otherwise if the passed in configuration is malicious. There is still a need for some kind of governance to ensure that only correct and safe **Templates** are added and dangerous assets get rejected. 
-<br/>
-
 ![vaultInfraFlow](./vaultInfraFlow.PNG)
-
-<br/>
-<br/>
-
 ## Vault, Adapter & Strategy
 -   **Vault:** A simple ERC-4626 implementation which allows the creator to add various types of fees and interact with other protocols via any ERC-4626 compliant **Adapter**. Fees and **Adapter** can be changed by the creator after a ragequit period.
 -   **Adapter:** An immutable wrapper for existing contract to allow for ERC-4626 compatability. Optionally adapters can utilize a **Strategy** to perform various additional tasks besides simply depositing and withdrawing token from the wrapped protocol. PopcornDAO will collect management fees via these **Adapter**.
@@ -34,114 +28,20 @@ The Vault Factory part consists of a mix of Registry and Execution contracts. Al
 
 ![vaultFlow](./vaultFlow.PNG)
 
-<br/>
-<br/>
-
 ## Utility Contracts
 Additionally we included 2 utility contracts that are used alongside the vault system.
 -   **MultiRewardStaking:** A simple ERC-4626 implementation of a staking contract. A user can provide an asset and receive rewards in multiple tokens. Adding these rewards is done by the contract owner. They can be either paid out over time or instantly. Rewards can optionally also be vested on claim.
 -   **MultiRewardEscrow:** Allows anyone to lock up and vest arbitrary tokens over a given time. Will be used mainly in conjuction with **MultiRewardStaking**.
 
-<br/>
-<br/>
 
-## Repository Overview
-
-```
-src
-├── interfaces
-│   ├── external
-│   ├── vault
-│   ├── ├── IAdapter.sol
-│   ├── ├── IAdminProxy.sol
-│   ├── ├── ICloneFactory.sol
-│   ├── ├── ICloneRegistry.sol
-│   ├── ├── IDeploymentController.sol
-│   ├── ├── IPermissionRegistry.sol
-│   ├── ├── IERC4626.sol
-│   ├── ├── IStrategy.sol
-│   ├── ├── ITemplateRegistry.sol
-│   ├── ├── IVault.sol
-│   ├── ├── IVaultController.sol
-│   ├── ├── IVaultRegistry.sol
-│   ├── ├── IWithRewards.sol
-│   ├── IEIP165.sol
-│   ├── IMultiRewardEscrow.sol
-│   ├── IMultiRewardStaking.sol
-│   ├── IOwned.sol
-│   ├── IPausable.sol
-│   ├── IPermit.sol
-├── utils
-│   ├── MultiRewardEscrow.sol
-│   ├── MultiRewardStaking.sol
-├── vault
-│   ├── adapter
-│   │   ├── abstracts
-│   │   │   ├── AdapterBase.sol
-│   │   │   ├── OnlyStrategy.sol
-│   │   │   ├── WithRewards.sol
-│   │   ├── beefy
-│   │   │   ├── BeefyAdapter.sol
-│   │   ├── yearn
-│   │   │   ├── YearnAdapter.sol
-│   ├── strategy
-│   ├── AdminProxy.sol
-│   ├── CloneFactory.sol
-│   ├── CloneRegistry.sol
-│   ├── DeploymentController.sol
-│   ├── PermissionRegistry.sol
-│   ├── TemplateRegistry.sol
-│   ├── Vault.sol
-│   ├── VaultController.sol
-│   ├── VaultRegistry.sol
-test
-```
-
-In scope for this audit are the following contracts:
-- AdminProxy.sol
-- CloneFactory.sol
-- CloneRegistry.sol
-- DeploymentController.sol
-- PermissionRegistry.sol
-- TemplateRegistry.sol
-- VaultController.sol
-- VaultRegistry.sol
-- Vault.sol
-- AdapterBase.sol
-- OnlyStrategy.sol
-- WithRewards.sol
-- BeefyAdapter.sol
-- YearnAdapter.sol
-- MultiRewardEscrow.sol
-- MultiRewardStaking.sol
-
-And the following interfaces:
-- IAdapter.sol
-- IAdminProxy.sol
-- ICloneFactory.sol
-- ICloneRegistry.sol
-- IDeploymentController.sol
-- IPermissionRegistry.sol
-- IERC4626.sol
-- IStrategy.sol
-- ITemplateRegistry.sol
-- IVault.sol
-- IVaultController.sol
-- IVaultRegistry.sol
-- IWithRewards.sol
-- IEIP165.sol
-- IMultiRewardEscrow.sol
-- IMultiRewardStaking.sol
-- IOwned
-- IPausable
-- IPermit
-  
-Some of these contracts depend on older utility contracts which is why this repo contains more than just these contracts. These dependencies have been audited previously.
-Additionally there are some wip sample strategies which might help to illustrate how strategies can be used in conjuction with adapters.
+# Additional Context
 
 **Note:** The `AdapterBase.sol` still has a TODO to use a deterministic address for `feeRecipient`. As we didnt deploy this proxy yet on our target chains it remains a placeholder value for the moment. Once the proxy exists we will simply switch out the palceholder address.
-<br/>
-<br/>
+
+All `Adapters`, `Vaults`, `Strategies` and `MultiRewardStaking` contracts are intended to be deployed as non-upgradeable clones.
+
+Contracts in `src/vault/strategy` are intended as samples of how strategies could look like but are in the current state still wip. They are NOT part of the audit.
+
 
 # Security
 There are multiple possible targets for attacks.
@@ -156,7 +56,6 @@ There are multiple possible targets for attacks.
   - Get malicious `Template` endorsed
   - Get malicious `asset` endorsed
 - Initial Deposit exploit (See the test in `YearnAdapter.t.sol`)
-- Manipulate `totalAsset()` to withdraw additional assets or earn more shares (Similar to the "inital deposit exploit")
 - Change `fees` of a vault to the max amount and change the `feeRecipient` to the attacker
 - Exchange the adapter of a vault for a malicious adapter
 - Nominate new `owner` of the `adminProxy` to change configurations or endorse malicious `templates`
@@ -167,33 +66,20 @@ There are multiple possible targets for attacks.
 - `Pause` vaults / adapters of other `creators`
 - Predeploy deterministic proxies on other chains
 
-Most of these attacks are only possible when the `VaultController` is misconfigured on deployment or its `owner` is compromised. The `owner` of `VaultController` should be a MultiSig which should make this process harder but nonetheless not impossible.<br/>
+Most of these attacks are only possible when the `VaultController` is misconfigured on deployment or its `owner` is compromised. The `owner` of `VaultController` should be a MultiSig which should make this process harder but nonetheless not impossible.
 
-## Initial Deposit Attack
-The `totalAsset` issue is one that i think all ERC4626 implementations are suffering from. A similiar issue that affects yearn is already known. See Finding 3, "Division rounding may affect issuance of shares" in [Yearn's ToB audit](https://github.com/yearn/yearn-security/blob/master/audits/20210719_ToB_yearn_vaultsv2/ToB_-_Yearn_Vault_v_2_Smart_Contracts_Audit_Report.pdf) for the details. Yearn vaults are vulnerable to an expensive but possible attack where a malicious initial deposit can force share calculations to round down. It's possible to prevent this by ensuring that the first vault deposit is sufficiently large, usually done by making an initial deposit at deployment.
-Too my knowledge that has not been addressed by Yearn but has also not been exploited yet. To prevent this `creators` can send an initial deposit on vault/adapter creation.
+## Inflation Attack
+EIP-4626 is vulnerable to the so-called [inflation attacks](https://ethereum-magicians.org/t/address-eip-4626-inflation-attacks-with-virtual-shares-and-assets/12677). This attack results from the possibility to manipulate the exchange rate and front run a victim’s deposit when the vault has low liquidity volume.  A similiar issue that affects yearn is already known. See Finding 3, "Division rounding may affect issuance of shares" in [Yearn's ToB audit](https://github.com/yearn/yearn-security/blob/master/audits/20210719_ToB_yearn_vaultsv2/ToB_-_Yearn_Vault_v_2_Smart_Contracts_Audit_Report.pdf) for the details. In order to combat this we are using virtual shares by a difference of 1e9. This approach was added in the latest release of openZeppelin. [OZ PR](https://github.com/OpenZeppelin/openzeppelin-contracts/pull/3979)
 
-```
-1. Deposit any amount of assets in 4626.
-2. Borrow assets and deposit them directly in the underlying protocol.
-3. Send the minted shares of the underlying protocol to the 4626.
-   -> TotalAssets gets inflated to the point that new deposits dont receive enough 4626 shares
-4. Wait for deposits into 4626 by other users
-   -> User doesnt get enough shares
-5. Redeem 4626 shares and earn some stolen assets 
-6. Repay loan
-```
-
-# Developer Notes
-
+# Tests
+## Quickstart command
+`export ETH_RPC_URL="<your-eth-rpc-url>" && export POLYGON_RPC_URL="<your-polygon-rpc-url>" && rm -Rf 2023-01-popcorn || true && git clone  https://github.com/code-423n4/2023-01-popcorn.git -j8 --recurse-submodules && cd 2023-01-popcorn && echo -e "ETH_RPC_URL=$ETH_RPC_URL\nPOLYGON_RPC_URL=$POLYGON_RPC_URL" > .env && foundryup && forge install && yarn install && forge test --no-match-contract 'Abstract' --gas-report`
 ## Prerequisites
 
 -   [Node.js](https://nodejs.org/en/) v16.16.0 (you may wish to use [nvm][1])
 -   [yarn](https://yarnpkg.com/)
 -   [foundry](https://github.com/foundry-rs/foundry)
 
-<br/>
-<br/>
 
 ## Installing Dependencies
 
@@ -204,9 +90,6 @@ forge install
 
 yarn install
 ```
-
-<br/>
-<br/>
 
 ## Testing
 

@@ -2,7 +2,7 @@
 // Docgen-SOLC: 0.8.15
 pragma solidity ^0.8.15;
 
-import { IERC4626, IERC20 } from "./vault/IERC4626.sol";
+import { IERC4626Upgradeable as IERC4626, IERC20Upgradeable as IERC20 } from "openzeppelin-contracts-upgradeable/interfaces/IERC4626Upgradeable.sol";
 import { IOwned } from "./IOwned.sol";
 import { IPermit } from "./IPermit.sol";
 import { IPausable } from "./IPausable.sol";
@@ -49,7 +49,11 @@ interface IMultiRewardStaking is IERC4626, IOwned, IPermit, IPausable {
 
   function fundReward(IERC20 rewardToken, uint256 amount) external;
 
-  function initialize(IERC20 _stakingToken, IMultiRewardEscrow _escrow, address _owner) external;
+  function initialize(
+    IERC20 _stakingToken,
+    IMultiRewardEscrow _escrow,
+    address _owner
+  ) external;
 
   function rewardInfos(IERC20 rewardToken) external view returns (RewardInfo memory);
 
