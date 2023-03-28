@@ -3,23 +3,24 @@ pragma solidity ^0.8.15;
 
 import { Test } from "forge-std/Test.sol";
 
-import { ConvexAdapter, SafeERC20, IERC20, IERC20Metadata, Math, IConvexBooster, IConvexRewards, IWithRewards, IStrategy } from "../../../../src/vault/adapter/convex/ConvexAdapter.sol";
-import { ConvexTestConfigStorage, ConvexTestConfig } from "./ConvexTestConfigStorage.sol";
-import { AbstractAdapterTest, ITestConfigStorage, IAdapter } from "../abstract/AbstractAdapterTest.sol";
+import { MasterChefAdapter, SafeERC20, IERC20, IERC20Metadata, Math, IMasterChef, IStrategy, IAdapter, IWithRewards } from "../../../../src/vault/adapter/sushi/MasterChefAdapter.sol";
+import { MasterChefTestConfigStorage, MasterChefTestConfig } from "./MasterChefTestConfigStorage.sol";
+import { AbstractAdapterTest, ITestConfigStorage } from "../abstract/AbstractAdapterTest.sol";
 import { MockStrategyClaimer } from "../../../utils/mocks/MockStrategyClaimer.sol";
 
-contract ConvexAdapterTest is AbstractAdapterTest {
+contract MasterChefAdapterTest is AbstractAdapterTest {
   using Math for uint256;
 
-  IConvexBooster convexBooster = IConvexBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
-  IConvexRewards convexRewards;
+  IMasterChef public masterChef = IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd);
+
+  address public rewardsToken;
   uint256 pid;
 
   function setUp() public {
     uint256 forkId = vm.createSelectFork(vm.rpcUrl("mainnet"));
     vm.selectFork(forkId);
 
-    testConfigStorage = ITestConfigStorage(address(new ConvexTestConfigStorage()));
+    testConfigStorage = ITestConfigStorage(address(new MasterChefTestConfigStorage()));
 
     _setUpTest(testConfigStorage.getTestConfig(0));
   }
@@ -29,17 +30,15 @@ contract ConvexAdapterTest is AbstractAdapterTest {
   }
 
   function _setUpTest(bytes memory testConfig) internal {
-    uint256 _pid = abi.decode(testConfig, (uint256));
+    (uint256 _pid, address _rewardsToken) = abi.decode(testConfig, (uint256, address));
 
     pid = _pid;
+    rewardsToken = _rewardsToken;
+    IMasterChef.PoolInfo memory info = masterChef.poolInfo(_pid);
 
-    (address _asset, , , address _convexRewards, , ) = convexBooster.poolInfo(pid);
-    convexRewards = IConvexRewards(_convexRewards);
+    setUpBaseTest(IERC20(info.lpToken), address(new MasterChefAdapter()), address(masterChef), 10, "MasterChef", true);
 
-    setUpBaseTest(IERC20(_asset), address(new ConvexAdapter()), address(convexBooster), 10, "Convex", true);
-
-    vm.label(address(convexBooster), "convexBooster");
-    vm.label(address(convexRewards), "convexRewards");
+    vm.label(address(masterChef), "masterChef");
     vm.label(address(asset), "asset");
     vm.label(address(this), "test");
 
@@ -50,13 +49,8 @@ contract ConvexAdapterTest is AbstractAdapterTest {
                           HELPER
     //////////////////////////////////////////////////////////////*/
 
-  function increasePricePerShare(uint256 amount) public override {
-    deal(address(asset), address(convexRewards), asset.balanceOf(address(convexRewards)) + amount);
-  }
-
   // Verify that totalAssets returns the expected amount
   function verify_totalAssets() public override {
-    // Make sure totalAssets isnt 0
     deal(address(asset), bob, defaultAmount);
     vm.startPrank(bob);
     asset.approve(address(adapter), defaultAmount);
@@ -87,7 +81,7 @@ contract ConvexAdapterTest is AbstractAdapterTest {
       "symbol"
     );
 
-    assertEq(asset.allowance(address(adapter), address(convexBooster)), type(uint256).max, "allowance");
+    assertEq(asset.allowance(address(adapter), address(masterChef)), type(uint256).max, "allowance");
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -108,16 +102,14 @@ contract ConvexAdapterTest is AbstractAdapterTest {
     vm.prank(bob);
     adapter.deposit(1000e18, bob);
 
-    vm.warp(block.timestamp + 30 days);
+    vm.roll(block.number + 30);
 
     vm.prank(bob);
-    adapter.withdraw(1, bob, bob);
+    adapter.withdraw(0, bob, bob);
 
     address[] memory rewardTokens = IWithRewards(address(adapter)).rewardTokens();
-    assertEq(rewardTokens[0], 0xD533a949740bb3306d119CC777fa900bA034cd52); // CRV
-    assertEq(rewardTokens[1], 0x4e3FBD56CD56c3e72c1403e103b45Db9da5B9D2B); // CVX
+    assertEq(rewardTokens[0], rewardsToken);
 
-    assertGt(IERC20(rewardTokens[0]).balanceOf(address(adapter)), 0);
-    assertGt(IERC20(rewardTokens[1]).balanceOf(address(adapter)), 0);
+    assertGt(IERC20(0x6B3595068778DD592e39A122f4f5a5cF09C90fE2).balanceOf(address(adapter)), 0);
   }
 }
