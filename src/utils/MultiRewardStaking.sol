@@ -333,8 +333,6 @@ contract MultiRewardStaking is ERC4626Upgradeable, OwnedUpgradeable {
       rewardInfos[rewardToken].rewardsEndTimestamp = rewardsEndTimestamp;
     }
 
-    rewardInfos[rewardToken].lastUpdatedTimestamp = block.timestamp.safeCastTo32();
-
     emit RewardInfoUpdate(rewardToken, rewards.rewardsPerSecond, rewardsEndTimestamp);
   }
 
