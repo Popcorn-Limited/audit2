@@ -618,9 +618,9 @@ contract VaultController is Owned {
    * @param tokens Array of tokens.
    * @param fees Array of fees for `tokens` in 1e18. (1e18 = 100%, 1e14 = 1 BPS)
    * @dev See `MultiRewardEscrow` for more details.
+   * @dev We dont need to verify array length here since its done already in `MultiRewardEscrow`
    */
   function setEscrowTokenFees(IERC20[] calldata tokens, uint256[] calldata fees) external onlyOwner {
-    _verifyEqualArrayLength(tokens.length, fees.length);
     (bool success, bytes memory returnData) = adminProxy.execute(
       address(escrow),
       abi.encodeWithSelector(IMultiRewardEscrow.setFees.selector, tokens, fees)
