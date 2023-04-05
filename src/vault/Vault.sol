@@ -511,8 +511,7 @@ contract Vault is
 
     /// @notice Collect management and performance fees and update vault share high water mark.
     modifier takeFees() {
-        uint256 managementFee = accruedManagementFee();
-        uint256 totalFee = managementFee + accruedPerformanceFee();
+        uint256 totalFee = accruedManagementFee() + accruedPerformanceFee();
         uint256 currentAssets = totalAssets();
         uint256 shareValue = convertToAssets(1e18);
 
