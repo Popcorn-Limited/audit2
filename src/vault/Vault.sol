@@ -98,7 +98,6 @@ contract Vault is
             abi.encodePacked("Popcorn", name(), block.timestamp, "Vault")
         );
 
-        feesUpdatedAt = block.timestamp;
         highWaterMark = 1e9;
         quitPeriod = 3 days;
         depositLimit = depositLimit_;
@@ -168,6 +167,9 @@ contract Vault is
         if (receiver == address(0)) revert InvalidReceiver();
         if (assets > maxDeposit(receiver)) revert MaxError(assets);
 
+        // Inititalize account for managementFee on first deposit
+        if (totalSupply() == 0) feesUpdatedAt = block.timestamp;
+
         uint256 feeShares = _convertToShares(
             assets.mulDiv(uint256(fees.deposit), 1e18, Math.Rounding.Down),
             Math.Rounding.Down
@@ -203,6 +205,9 @@ contract Vault is
     ) public override nonReentrant whenNotPaused returns (uint256 assets) {
         if (receiver == address(0)) revert InvalidReceiver();
         if (shares == 0) revert ZeroAmount();
+
+        // Inititalize account for managementFee on first deposit
+        if (totalSupply() == 0) feesUpdatedAt = block.timestamp;
 
         uint256 depositFee = uint256(fees.deposit);
 

@@ -130,7 +130,6 @@ contract VaultTest is Test {
     assertEq(performance, 100);
     assertEq(newVault.feeRecipient(), feeRecipient);
     assertEq(newVault.highWaterMark(), 1e9);
-    assertEq(newVault.feesUpdatedAt(), callTime);
 
     assertEq(newVault.quitPeriod(), 3 days);
     assertEq(asset.allowance(address(newVault), address(adapter)), type(uint256).max);
