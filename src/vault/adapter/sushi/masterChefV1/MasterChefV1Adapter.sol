@@ -3,18 +3,18 @@
 
 pragma solidity ^0.8.15;
 
-import { AdapterBase, IERC20, IERC20Metadata, SafeERC20, ERC20, Math, IStrategy, IAdapter } from "../abstracts/AdapterBase.sol";
-import { WithRewards, IWithRewards } from "../abstracts/WithRewards.sol";
-import { IMasterChef } from "./IMasterChef.sol";
+import { AdapterBase, IERC20, IERC20Metadata, SafeERC20, ERC20, Math, IStrategy, IAdapter } from "../../abstracts/AdapterBase.sol";
+import { WithRewards, IWithRewards } from "../../abstracts/WithRewards.sol";
+import { IMasterChefV1 } from "./IMasterChefV1.sol";
 
 /**
- * @title   MasterChef Adapter
- * @notice  ERC4626 wrapper for MasterChef Vaults.
+ * @title   MasterChefV1 Adapter
+ * @notice  ERC4626 wrapper for MasterChefV1 Vaults.
  *
- * An ERC4626 compliant Wrapper for https://github.com/sushiswap/sushiswap/blob/archieve/canary/contracts/MasterChefV2.sol.
- * Allows wrapping MasterChef Vaults.
+ * An ERC4626 compliant Wrapper for https://github.com/sushiswap/sushiswap/blob/archieve/canary/contracts/MasterChef.sol.
+ * Allows wrapping MasterChefV1 Vaults.
  */
-contract MasterChefAdapter is AdapterBase, WithRewards {
+contract MasterChefV1Adapter is AdapterBase, WithRewards {
   using SafeERC20 for IERC20;
   using Math for uint256;
 
@@ -22,7 +22,7 @@ contract MasterChefAdapter is AdapterBase, WithRewards {
   string internal _symbol;
 
   // @notice The MasterChef contract
-  IMasterChef public masterChef;
+  IMasterChefV1 public masterChef;
 
   // @notice The address of the reward token
   address public rewardsToken;
@@ -53,8 +53,8 @@ contract MasterChefAdapter is AdapterBase, WithRewards {
 
     (uint256 _pid, address _rewardsToken) = abi.decode(masterchefInitData, (uint256, address));
 
-    masterChef = IMasterChef(registry);
-    IMasterChef.PoolInfo memory pool = masterChef.poolInfo(_pid);
+    masterChef = IMasterChefV1(registry);
+    IMasterChefV1.PoolInfo memory pool = masterChef.poolInfo(_pid);
 
     if (pool.lpToken != asset()) revert InvalidAsset();
 
@@ -83,7 +83,7 @@ contract MasterChefAdapter is AdapterBase, WithRewards {
   /// @return The total amount of underlying tokens the Vault holds.
 
   function _totalAssets() internal view override returns (uint256) {
-    IMasterChef.UserInfo memory user = masterChef.userInfo(pid, address(this));
+    IMasterChefV1.UserInfo memory user = masterChef.userInfo(pid, address(this));
     return user.amount;
   }
 

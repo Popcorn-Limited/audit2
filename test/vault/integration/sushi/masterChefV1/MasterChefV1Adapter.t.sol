@@ -3,15 +3,15 @@ pragma solidity ^0.8.15;
 
 import { Test } from "forge-std/Test.sol";
 
-import { MasterChefAdapter, SafeERC20, IERC20, IERC20Metadata, Math, IMasterChef, IStrategy, IAdapter, IWithRewards } from "../../../../src/vault/adapter/sushi/MasterChefAdapter.sol";
-import { MasterChefTestConfigStorage, MasterChefTestConfig } from "./MasterChefTestConfigStorage.sol";
-import { AbstractAdapterTest, ITestConfigStorage } from "../abstract/AbstractAdapterTest.sol";
-import { MockStrategyClaimer } from "../../../utils/mocks/MockStrategyClaimer.sol";
+import { MasterChefV1Adapter, SafeERC20, IERC20, IERC20Metadata, Math, IMasterChefV1, IStrategy, IAdapter, IWithRewards } from "../../../../../../src/vault/adapter/sushi/masterChefV1/MasterChefV1Adapter.sol";
+import { MasterChefV1TestConfigStorage, MasterChefV1TestConfig } from "./MasterChefV1TestConfigStorage.sol";
+import { AbstractAdapterTest, ITestConfigStorage } from "../../abstract/AbstractAdapterTest.sol";
+import { MockStrategyClaimer } from "../../../../utils/mocks/MockStrategyClaimer.sol";
 
-contract MasterChefAdapterTest is AbstractAdapterTest {
+contract MasterChefV1AdapterTest is AbstractAdapterTest {
   using Math for uint256;
 
-  IMasterChef public masterChef = IMasterChef(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd);
+  IMasterChefV1 public MasterChefV1 = IMasterChefV1(0xc2EdaD668740f1aA35E4D8f227fB8E17dcA888Cd);
 
   address public rewardsToken;
   uint256 pid;
@@ -20,7 +20,7 @@ contract MasterChefAdapterTest is AbstractAdapterTest {
     uint256 forkId = vm.createSelectFork(vm.rpcUrl("mainnet"));
     vm.selectFork(forkId);
 
-    testConfigStorage = ITestConfigStorage(address(new MasterChefTestConfigStorage()));
+    testConfigStorage = ITestConfigStorage(address(new MasterChefV1TestConfigStorage()));
 
     _setUpTest(testConfigStorage.getTestConfig(0));
   }
@@ -34,11 +34,11 @@ contract MasterChefAdapterTest is AbstractAdapterTest {
 
     pid = _pid;
     rewardsToken = _rewardsToken;
-    IMasterChef.PoolInfo memory info = masterChef.poolInfo(_pid);
+    IMasterChefV1.PoolInfo memory info = MasterChefV1.poolInfo(_pid);
 
-    setUpBaseTest(IERC20(info.lpToken), address(new MasterChefAdapter()), address(masterChef), 10, "MasterChef", true);
+    setUpBaseTest(IERC20(info.lpToken), address(new MasterChefV1Adapter()), address(MasterChefV1), 10, "MasterChefV1", true);
 
-    vm.label(address(masterChef), "masterChef");
+    vm.label(address(MasterChefV1), "MasterChefV1");
     vm.label(address(asset), "asset");
     vm.label(address(this), "test");
 
@@ -81,7 +81,7 @@ contract MasterChefAdapterTest is AbstractAdapterTest {
       "symbol"
     );
 
-    assertEq(asset.allowance(address(adapter), address(masterChef)), type(uint256).max, "allowance");
+    assertEq(asset.allowance(address(adapter), address(MasterChefV1)), type(uint256).max, "allowance");
   }
 
   /*//////////////////////////////////////////////////////////////
