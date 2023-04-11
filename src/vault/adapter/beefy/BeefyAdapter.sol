@@ -113,7 +113,7 @@ contract BeefyAdapter is AdapterBase, WithRewards {
       beefyFee = strat.withdrawFee();
     }
 
-    if (beefyFee > 0) assets = assets.mulDiv(BPS_DENOMINATOR, BPS_DENOMINATOR - beefyFee, Math.Rounding.Up);
+    if (beefyFee > 0) assets = assets.mulDiv(BPS_DENOMINATOR, BPS_DENOMINATOR - beefyFee, Math.Rounding.Down);
 
     return _convertToShares(assets, Math.Rounding.Up);
   }
@@ -131,7 +131,7 @@ contract BeefyAdapter is AdapterBase, WithRewards {
       beefyFee = strat.withdrawFee();
     }
 
-    if (beefyFee > 0) assets = assets.mulDiv(BPS_DENOMINATOR - beefyFee, BPS_DENOMINATOR, Math.Rounding.Up);
+    if (beefyFee > 0) assets = assets.mulDiv(BPS_DENOMINATOR - beefyFee, BPS_DENOMINATOR, Math.Rounding.Down);
 
     return assets;
   }
