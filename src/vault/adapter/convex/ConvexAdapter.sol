@@ -12,7 +12,7 @@ import { IConvexBooster, IConvexRewards, IRewards } from "./IConvex.sol";
  * @author  amatureApe
  * @notice  ERC4626 wrapper for Convex Vaults.
  *
- * An ERC4626 compliant Wrapper for https://github.com/beefyfinance/beefy-contracts/blob/master/contracts/BIFI/vaults/BeefyVaultV6.sol.
+ * An ERC4626 compliant Wrapper for https://github.com/convex-eth/platform/blob/main/contracts/contracts/Booster.sol.
  * Allows wrapping Convex Vaults with or without an active convexBooster.
  * Allows for additional strategies to use rewardsToken in case of an active convexBooster.
  */
@@ -84,7 +84,7 @@ contract ConvexAdapter is AdapterBase, WithRewards {
     return convexRewards.balanceOf(address(this));
   }
 
-  /// @notice The token rewarded if the aave liquidity mining is active
+  /// @notice The token rewarded from the convex reward contract
   function rewardTokens() external view override returns (address[] memory) {
     uint256 len = convexRewards.extraRewardsLength();
 

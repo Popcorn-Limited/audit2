@@ -680,7 +680,7 @@ contract VaultController is Owned {
                           PAUSING LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  /// @notice Pause Deposits and withdraw all funds from the underlying protocol. Caller must be owner or creator of the Vault.
+  /// @notice Pause Deposits and withdraw all funds from the underlying protocol. Caller must be owner.
   function pauseAdapters(address[] calldata vaults) external onlyOwner {
     uint8 len = uint8(vaults.length);
     for (uint256 i = 0; i < len; i++) {
@@ -692,7 +692,7 @@ contract VaultController is Owned {
     }
   }
 
-  /// @notice Unpause Deposits and deposit all funds into the underlying protocol. Caller must be owner or creator of the Vault.
+  /// @notice Unpause Deposits and deposit all funds into the underlying protocol. Caller must be owner.
   function unpauseAdapters(address[] calldata vaults) external onlyOwner {
     uint8 len = uint8(vaults.length);
     for (uint256 i = 0; i < len; i++) {
