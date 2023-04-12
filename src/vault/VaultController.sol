@@ -836,7 +836,7 @@ contract VaultController is Owned {
     error NotSubmitterNorOwner(address caller);
     error NotSubmitter(address caller);
     error NotAllowed(address subject);
-    error ArrayLengthMissmatch();
+    error ArrayLengthMismatch();
 
     /// @notice Verify that the caller is the creator of the vault or owner of `VaultController` (admin rights).
     function _verifyCreatorOrOwner(
@@ -873,7 +873,7 @@ contract VaultController is Owned {
         uint256 length1,
         uint256 length2
     ) internal pure {
-        if (length1 != length2) revert ArrayLengthMissmatch();
+        if (length1 != length2) revert ArrayLengthMismatch();
     }
 
     modifier canCreate() {
