@@ -32,6 +32,8 @@ interface IMasterChefV2 {
 
     function lpToken(uint256 pid) external view returns (address);
 
+    function rewarder(uint256 pid) external view returns (address);
+
     function totalAllocPoint() external view returns (uint256);
 
     function deposit(uint256 _pid, uint256 _amount, address _to) external;
@@ -44,4 +46,8 @@ interface IMasterChefV2 {
         uint256 _pid,
         address _user
     ) external view returns (uint256);
+}
+
+interface IRewarder {
+    function rewardToken() external view returns (address);
 }

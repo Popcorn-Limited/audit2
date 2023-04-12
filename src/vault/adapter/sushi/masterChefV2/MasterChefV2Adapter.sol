@@ -5,7 +5,7 @@ pragma solidity ^0.8.15;
 
 import {AdapterBase, IERC20, IERC20Metadata, SafeERC20, ERC20, Math, IStrategy, IAdapter} from "../../abstracts/AdapterBase.sol";
 import {WithRewards, IWithRewards} from "../../abstracts/WithRewards.sol";
-import {IMasterChefV2} from "./IMasterChefV2.sol";
+import {IMasterChefV2, IRewarder} from "./IMasterChefV2.sol";
 
 /**
  * @title   MasterChefV2 Adapter
@@ -129,8 +129,17 @@ contract MasterChefV2Adapter is AdapterBase, WithRewards {
 
     /// @notice The token rewarded
     function rewardTokens() external view override returns (address[] memory) {
-        address[] memory _rewardTokens = new address[](1);
+        address rewarder = masterChef.rewarder(pid);
+
+        address[] memory _rewardTokens;
+        if (rewarder == address(0)) {
+            _rewardTokens = new address[](1);
+        } else {
+            _rewardTokens = new address[](2);
+            _rewardTokens[1] = IRewarder(rewarder).rewardToken();
+        }
         _rewardTokens[0] = rewardsToken;
+
         return _rewardTokens;
     }
 

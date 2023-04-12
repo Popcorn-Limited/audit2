@@ -122,9 +122,8 @@ contract MasterChefV2AdapterTest is AbstractAdapterTest {
         vm.prank(bob);
         adapter.deposit(1000e18, bob);
 
-        vm.roll(block.number + 10);
-
-        emit log_uint(masterChef.pendingSushi(pid, address(adapter)));
+        vm.roll(block.number + 3000);
+        vm.warp(block.timestamp + 200);
 
         vm.prank(bob);
         adapter.withdraw(1, bob, bob);
