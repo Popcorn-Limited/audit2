@@ -135,9 +135,15 @@ contract BeefyAdapter is AdapterBase, WithRewards {
     }
 
     /// @notice The token rewarded if a beefy booster is configured
-    function rewardTokens() external view override returns (address[] memory _rewardTokens) {
+    function rewardTokens()
+        external
+        view
+        override
+        returns (address[] memory _rewardTokens)
+    {
         _rewardTokens = new address[](1);
-        if (address(beefyBooster) != address(0)) return _rewardTokens[0] = beefyBooster.rewardToken();
+        if (address(beefyBooster) != address(0))
+            _rewardTokens[0] = beefyBooster.rewardToken();
     }
 
     /// @notice `previewWithdraw` that takes beefy withdrawal fees into account
@@ -219,9 +225,11 @@ contract BeefyAdapter is AdapterBase, WithRewards {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Claim rewards from the beefy booster given its configured
-    function claim() public override onlyStrategy {
-        if (address(beefyBooster) == address(0)) return;
-        try beefyBooster.getReward() {} catch {};
+    function claim() public override onlyStrategy returns (bool success) {
+        if (address(beefyBooster) == address(0)) return false;
+        try beefyBooster.getReward() {
+            success = true;
+        } catch {}
     }
 
     /*//////////////////////////////////////////////////////////////

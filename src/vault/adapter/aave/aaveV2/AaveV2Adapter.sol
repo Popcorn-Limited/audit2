@@ -142,15 +142,15 @@ contract AaveV2Adapter is AdapterBase, WithRewards {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Claim liquidity mining rewards given that it's active
-    function claim() public override onlyStrategy {
-        if (address(aaveMining) == address(0)) return;
+    function claim() public override onlyStrategy returns (bool success) {
+        if (address(aaveMining) == address(0)) return false;
 
         address[] memory assets = new address[](1);
         assets[0] = address(aToken);
 
-        try
-            aaveMining.claimRewards(assets, type(uint256).max, address(this))
-        {} catch {}
+        try aaveMining.claimRewards(assets, type(uint256).max, address(this)) {
+            success = true;
+        } catch {}
     }
 
     /*//////////////////////////////////////////////////////////////

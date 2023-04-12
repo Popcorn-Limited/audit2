@@ -169,8 +169,10 @@ contract CompoundV2Adapter is AdapterBase, WithRewards {
     //////////////////////////////////////////////////////////////*/
 
     /// @notice Claim additional rewards given that it's active.
-    function claim() public override onlyStrategy {
-        try comptroller.claimComp(address(this)) {} catch {}
+    function claim() public override onlyStrategy returns (bool success) {
+        try comptroller.claimComp(address(this)) {
+            success = true;
+        } catch {}
     }
 
     /*//////////////////////////////////////////////////////////////

@@ -123,12 +123,19 @@ contract MasterChefV2Adapter is AdapterBase, WithRewards {
                             STRATEGY LOGIC
     //////////////////////////////////////////////////////////////*/
     /// @notice Claim rewards from the masterChef
-    function claim() public override onlyStrategy {
-        try masterChef.harvest(pid, address(this)) {} catch {}
+    function claim() public override onlyStrategy returns (bool success) {
+        try masterChef.harvest(pid, address(this)) {
+            success = true;
+        } catch {}
     }
 
     /// @notice The token rewarded
-    function rewardTokens() external view override returns (address[] memory _rewardTokens) {
+    function rewardTokens()
+        external
+        view
+        override
+        returns (address[] memory _rewardTokens)
+    {
         address rewarder = masterChef.rewarder(pid);
 
         if (rewarder == address(0)) {

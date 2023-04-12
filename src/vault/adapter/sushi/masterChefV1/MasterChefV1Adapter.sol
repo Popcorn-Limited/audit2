@@ -123,8 +123,10 @@ contract MasterChefV1Adapter is AdapterBase, WithRewards {
                             STRATEGY LOGIC
     //////////////////////////////////////////////////////////////*/
     /// @notice Claim rewards from the masterChef
-    function claim() public override onlyStrategy {
-        try masterChef.deposit(pid, 0) {} catch {}
+    function claim() public override onlyStrategy returns (bool success) {
+        try masterChef.deposit(pid, 0) {
+            success = true;
+        } catch {}
     }
 
     /// @notice The token rewarded
