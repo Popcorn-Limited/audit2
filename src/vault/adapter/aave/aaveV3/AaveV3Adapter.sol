@@ -31,9 +31,6 @@ contract AaveV3Adapter is AdapterBase, WithRewards {
   /// @notice The Aave liquidity mining contract
   IAaveIncentives public aaveIncentives;
 
-  /// @notice Array of reward tokens available for aToken.
-  address[] availableRewards;
-
   /// @notice Check to see if Aave liquidity mining is active
   bool public isActiveIncentives;
 
@@ -72,12 +69,6 @@ contract AaveV3Adapter is AdapterBase, WithRewards {
     aaveIncentives = IAaveIncentives(aToken.getIncentivesController());
 
     IERC20(asset()).approve(address(lendingPool), type(uint256).max);
-
-    if (address(aaveIncentives) != address(0)) {
-      availableRewards = aaveIncentives.getRewardsByAsset(asset());
-    }
-
-    isActiveIncentives = availableRewards.length > 0 ? true : false;
   }
 
   function name() public view override(IERC20Metadata, ERC20) returns (string memory) {
@@ -98,7 +89,7 @@ contract AaveV3Adapter is AdapterBase, WithRewards {
 
   /// @notice The token rewarded if the aave liquidity mining is active
   function rewardTokens() external view override returns (address[] memory) {
-    return aaveIncentives.getRewardsList();
+    return aaveIncentives.getRewardsByAsset(asset());
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -119,14 +110,15 @@ contract AaveV3Adapter is AdapterBase, WithRewards {
                             STRATEGY LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  error IncentivesNotActive();
 
   /// @notice Claim additional rewards given that it's active.
   function claim() public override onlyStrategy {
-    if (isActiveIncentives == false) revert IncentivesNotActive();
+    if (address(aaveIncentives) == address(0)) return;
+    
     address[] memory _assets = new address[](1);
     _assets[0] = address(aToken);
-    aaveIncentives.claimAllRewardsOnBehalf(_assets, address(this), address(this));
+    
+    try aaveIncentives.claimAllRewardsOnBehalf(_assets, address(this), address(this)) {} catch {};
   }
 
   /*//////////////////////////////////////////////////////////////

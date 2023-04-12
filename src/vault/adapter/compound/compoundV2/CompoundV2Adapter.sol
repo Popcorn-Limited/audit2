@@ -80,8 +80,6 @@ contract CompoundV2Adapter is AdapterBase, WithRewards {
         if (isListed == false) revert InvalidAsset(address(cToken));
 
         IERC20(asset()).approve(address(cToken), type(uint256).max);
-
-        isActiveCompRewards = comptroller.compSupplySpeeds(address(cToken)) > 0;
     }
 
     function name()
@@ -135,9 +133,13 @@ contract CompoundV2Adapter is AdapterBase, WithRewards {
     }
 
     /// @notice The token rewarded if compound liquidity mining is active
-    function rewardTokens() external view override returns (address[] memory) {
-        address[] memory _rewardTokens = new address[](1);
-        if (isActiveCompRewards == false) return _rewardTokens;
+    function rewardTokens()
+        external
+        view
+        override
+        returns (address[] memory _rewardTokens)
+    {
+        _rewardTokens = new address[](1);
         _rewardTokens[0] = comptroller.getCompAddress();
     }
 
@@ -166,12 +168,9 @@ contract CompoundV2Adapter is AdapterBase, WithRewards {
                             STRATEGY LOGIC
     //////////////////////////////////////////////////////////////*/
 
-    error IncentivesNotActive();
-
     /// @notice Claim additional rewards given that it's active.
     function claim() public override onlyStrategy {
-        if (isActiveCompRewards == false) revert IncentivesNotActive();
-        comptroller.claimComp(address(this));
+        try comptroller.claimComp(address(this)) {} catch {}
     }
 
     /*//////////////////////////////////////////////////////////////

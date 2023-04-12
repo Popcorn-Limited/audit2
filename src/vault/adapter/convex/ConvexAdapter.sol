@@ -85,7 +85,7 @@ contract ConvexAdapter is AdapterBase, WithRewards {
   }
 
   /// @notice The token rewarded from the convex reward contract
-  function rewardTokens() external view override returns (address[] memory) {
+  function rewardTokens() external view override returns (address[] memory tokens) {
     uint256 len = convexRewards.extraRewardsLength();
 
     address[] memory tokens = new address[](len + 1);
@@ -94,7 +94,6 @@ contract ConvexAdapter is AdapterBase, WithRewards {
     for (uint256 i; i < len; i++) {
       tokens[i + 1] = convexRewards.extraRewards(i).rewardToken();
     }
-    return tokens;
   }
 
   /*//////////////////////////////////////////////////////////////
@@ -120,11 +119,9 @@ contract ConvexAdapter is AdapterBase, WithRewards {
                             STRATEGY LOGIC
     //////////////////////////////////////////////////////////////*/
 
-  error MiningNotActive();
-
   /// @notice Claim liquidity mining rewards given that it's active
   function claim() public override onlyStrategy {
-    convexRewards.getReward(address(this), true);
+    try convexRewards.getReward(address(this), true) {} catch {};
   }
 
   /*//////////////////////////////////////////////////////////////
