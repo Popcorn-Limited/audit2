@@ -615,6 +615,39 @@ contract VaultControllerTest is Test {
     );
   }
 
+  function testFail__deployVault_without_adapter_nor_adapterData() public {
+    addTemplate("Adapter", templateId, adapterImpl, true, true);
+    addTemplate("Strategy", "MockStrategy", strategyImpl, false, true);
+    addTemplate("Vault", "V1", vaultImpl, true, true);
+    controller.setPerformanceFee(uint256(1000));
+    controller.setHarvestCooldown(1 days);
+
+    controller.deployVault(
+      VaultInitParams({
+        asset: iAsset,
+        adapter: IERC4626(address(0)),
+        fees: VaultFees({ deposit: 100, withdrawal: 200, management: 300, performance: 400 }),
+        feeRecipient: feeRecipient,
+        depositLimit: type(uint256).max,
+        owner: address(this)
+      }),
+      DeploymentArgs({ id: "", data: "" }),
+      DeploymentArgs({ id: "", data: "" }),
+      false,
+      "",
+      VaultMetadata({
+        vault: address(0),
+        staking: address(0),
+        creator: address(this),
+        metadataCID: metadataCid,
+        swapTokenAddresses: swapTokenAddresses,
+        swapAddress: address(0x5555),
+        exchange: uint256(1)
+      }),
+      0
+    );
+  }
+
   /*//////////////////////////////////////////////////////////////
                         ADAPTER DEPLOYMENT
     //////////////////////////////////////////////////////////////*/
@@ -841,7 +874,7 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vault).proposedAdapterTime(), callTime);
   }
 
-  function testFail__proposeVaultAdapters_missmatching_arrays() public {
+  function testFail__proposeVaultAdapters_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     IERC4626[] memory adapters = new IERC4626[](1);
 
@@ -929,7 +962,7 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vault).proposedFeeTime(), callTime);
   }
 
-  function testFail__proposeVaultFees_missmatching_arrays() public {
+  function testFail__proposeVaultFees_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     VaultFees[] memory fees = new VaultFees[](1);
 
@@ -995,7 +1028,7 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vault).quitPeriod(), 1 days);
   }
 
-  function testFail__setVaultQuitPeriods_missmatching_arrays() public {
+  function testFail__setVaultQuitPeriods_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     uint256[] memory quitPeriods = new uint256[](1);
 
@@ -1037,7 +1070,7 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vault).feeRecipient(), address(0x44444));
   }
 
-  function testFail__setVaultFeeRecipients_missmatching_arrays() public {
+  function testFail__setVaultFeeRecipients_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     address[] memory feeRecipients = new address[](1);
 
@@ -1077,7 +1110,7 @@ contract VaultControllerTest is Test {
     assertEq(IVault(vault).depositLimit(), uint256(10));
   }
 
-  function testFail__setVaultDepositLimits_missmatching_arrays() public {
+  function testFail__setVaultDepositLimits_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     uint256[] memory depositLimits = new uint256[](1);
 
@@ -1159,7 +1192,7 @@ contract VaultControllerTest is Test {
     assertEq(uint256(IMultiRewardStaking(staking).escrowInfos(iRewardToken2).offset), 1 days);
   }
 
-  function testFail__addStakingRewardsTokens_missmatching_arrays() public {
+  function testFail__addStakingRewardsTokens_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     bytes[] memory rewardsData = new bytes[](1);
 
@@ -1259,7 +1292,7 @@ contract VaultControllerTest is Test {
     assertEq(IMultiRewardStaking(staking).rewardInfos(iRewardToken).rewardsPerSecond, 0.2 ether);
   }
 
-  function testFail__changeStakingRewardsSpeeds_missmatching_arrays() public {
+  function testFail__changeStakingRewardsSpeeds_mismatching_arrays() public {
     address[] memory targets = new address[](1);
     IERC20[] memory rewardTokens = new IERC20[](2);
     uint160[] memory rewardSpeeds = new uint160[](2);
@@ -1313,7 +1346,7 @@ contract VaultControllerTest is Test {
     assertEq(uint256(IMultiRewardStaking(staking).rewardInfos(iRewardToken).rewardsEndTimestamp), callTimestamp + 110);
   }
 
-  function testFail__fundStakingRewards_missmatching_arrays() public {
+  function testFail__fundStakingRewards_mismatching_arrays() public {
     address[] memory targets = new address[](2);
     IERC20[] memory rewardTokens = new IERC20[](1);
     uint256[] memory amounts = new uint256[](1);
@@ -1335,7 +1368,7 @@ contract VaultControllerTest is Test {
     assertEq(escrow.fees(iRewardToken).feePerc, 1e14);
   }
 
-  function testFail__setEscrowTokenFees_missmatching_arrays() public {
+  function testFail__setEscrowTokenFees_mismatching_arrays() public {
     IERC20[] memory targets = new IERC20[](2);
     uint256[] memory fees = new uint256[](1);
 
@@ -1407,7 +1440,7 @@ contract VaultControllerTest is Test {
     assertTrue(template.endorsed);
   }
 
-  function testFail__toggleTemplateEndorsements_missmatching_arrays() public {
+  function testFail__toggleTemplateEndorsements_mismatching_arrays() public {
     bytes32[] memory templateCategories = new bytes32[](1);
     templateCategories[0] = templateCategory;
     bytes32[] memory templateIds = new bytes32[](1);
